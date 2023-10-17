@@ -15,16 +15,10 @@
  */
 package com.dummy.aem.core.models;
 
-import static org.apache.sling.api.resource.ResourceResolver.PROPERTY_RESOURCE_TYPE;
-
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
-
-import com.adobe.cq.wcm.core.components.models.Page;
 import com.adobe.xfa.ut.StringUtils;
+import com.day.cq.wcm.api.Page;
+import com.day.cq.wcm.api.PageManager;
 import com.dummy.aem.core.config.OsgiConfigDemo;
-import com.dummy.aem.core.services.DemoService;
 import com.dummy.aem.core.services.DemoService2;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;
@@ -34,12 +28,14 @@ import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.models.annotations.*;
 import org.apache.sling.models.annotations.injectorspecific.*;
 
-import com.day.cq.wcm.api.PageManager;
-
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static org.apache.sling.api.resource.ResourceResolver.PROPERTY_RESOURCE_TYPE;
 
 @Model(adaptables = SlingHttpServletRequest.class,
         resourceType = HelloWorldModel.RESOURCE_TYPE,
@@ -83,10 +79,13 @@ public class HelloWorldModel {
     @ChildResource
     private List<Books> bookdetailswithmap;
 
-
+    @ChildResource
+    @ValueMapValue
+    private List<Resource> nestedbookdetailsSingleField;
 
     @ChildResource
     private List<Book> nestedbookdetailswithmap;
+
 
 
 //
@@ -114,7 +113,7 @@ public class HelloWorldModel {
         if (demoService != null) {
             currentPage2 = demoService.getCurrentPage();
         }
-
+        List<String> titles = getPage();
         message = "Hello World!\n"
             + "Resource type is: " + resourceType + "\n"
             + "Current page is:  " + currentPage2 + "\n"
@@ -161,6 +160,25 @@ public class HelloWorldModel {
         }
         return nestedbookdetailswithmap;
     }
+
+    public List<String> getMyfield() {
+        if(null == nestedbookdetailsSingleField && nestedbookdetailsSingleField.isEmpty())
+            return Collections.emptyList();
+        return nestedbookdetailsSingleField.stream().map(e -> e.getValueMap().get("bookName",String.class)).collect(Collectors.toList());
+    }
+
+    public List<String> getPage() {
+        List<String> paths = new ArrayList<>();
+        paths.add("/content/wknd/language-masters/ru");
+        PageManager pageManager = resourceResolver.adaptTo(PageManager.class);
+        return paths.stream()
+                .map(path -> Optional.ofNullable(pageManager)
+                        .map(pm -> pm.getPage(path))
+                        .map(Page::getTitle)
+                        .orElse(null))
+                .collect(Collectors.toList());
+    }
+
 
 //    public String getPage() {
 //        return page.getTitle();
